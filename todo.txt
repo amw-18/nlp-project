@@ -1,0 +1,5 @@
+- Create new way to do IR for gvsm type 
+    - store the titj for the dataset in an external file
+    - we won't have to calculate titj for each run since it's never changing
+    - also store the document vectors in an external file
+    
