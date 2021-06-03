@@ -236,8 +236,8 @@ class SearchEngine:
 
 
 if __name__ == "__main__":
-
-	n_comps = [1000]
+	# 900-91.5, 1000-94.11, 1300-99.1
+	n_comps = [900, 1000, 1300]
 	for n_comp in n_comps:
 		# Create an argument parser
 		parser = argparse.ArgumentParser(description='lsa_main.py')

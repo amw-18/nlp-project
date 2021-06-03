@@ -133,29 +133,27 @@ def similarity_score(S1, S2):
         
 def create_titj(syns):
     n = len(syns)
-    titj = {}
+    titj = [0]*((n**2 - n)//2)
     count = 0
     for i in range(n):
         for j in range(i+1, n):
             val = similarity_score(syns[i], syns[j])
-            if val != 0:
-                titj[count] = val
+            titj[count] = val
             count += 1
 
-    return titj
+    return np.array(titj)
 
 def r_doc_vec(doc_vec):
-    n = len(doc_vec)
-    r_vec = {}
+    n = doc_vec.shape[1]
+    r_vec = [0]*((n**2 - n)//2)
     count = 0
     for i in range(n):
         for j in range(i+1, n):
-            val = doc_vec[i] + doc_vec[j]
-            if val != 0:
-                r_vec[count] = val
+            val = doc_vec[0, i] + doc_vec[0, j]
+            r_vec[count] = val
             count += 1
     
-    return r_vec
+    return np.array(r_vec)
 
 
 def get_synsets(vocab):
@@ -170,16 +168,9 @@ def get_synsets(vocab):
     return syns
 
 def gvsm_similarity(d_vec, q_vec):
-    d_norm = np.sqrt(np.sum(np.array(d_vec.values())**2))
-    q_norm = np.sqrt(np.sum(np.array(q_vec.values())**2))
-    return gvsm_dot(q_vec, d_vec)/d_norm/q_norm
+    d_norm = np.linalg.norm(d_vec)
+    q_norm = np.linalg.norm(q_vec)
+    return np.dot(q_vec, d_vec)/d_norm/q_norm
 
 
-def gvsm_dot(vec1, vec2):
-    ans = 0
-    common_keys = set(vec1.keys()).intersection(set(vec2.keys()))
-    if common_keys:
-        for key in common_keys:
-            ans += vec1[key]*vec2[key]
 
-    return ans

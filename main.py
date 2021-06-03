@@ -202,7 +202,7 @@ class SearchEngine:
         plt.legend()
         plt.title("Evaluation Metrics - Cranfield Dataset")
         plt.xlabel("k")
-        # plt.savefig(args.out_folder + "eval_plot.png")
+        plt.savefig("gvsm_plot.png")
 
         
     def handleCustomQuery(self):
@@ -270,5 +270,5 @@ if __name__ == "__main__":
     else:
         searchEngine.evaluateDataset()
 
-    plt.show()
+    # plt.show()
 

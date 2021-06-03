@@ -5,6 +5,7 @@ from collections import defaultdict
 import numpy as np 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
+import pickle
 
 
 class InformationRetrieval():
@@ -48,8 +49,23 @@ class InformationRetrieval():
 			self.doc_vecs = get_doc_vecs(docs, docIDs, self.word_order, self.idfs)
 
 		elif self.type == 'lsa':
-			self.vectorizer = TfidfVectorizer(stop_words='english')
-			tf_idf_docs = self.vectorizer.fit_transform(docs)
+			try:
+				with open("saved_params/tf_idf_vectorizer.pkl", 'rb') as f:
+					self.vectorizer = pickle.load(f)
+				f.close()
+				with open("saved_params/tf_idf_docs.pkl", 'rb') as f:
+					tf_idf_docs = pickle.load(f)
+				f.close()
+				
+			except:
+				self.vectorizer = TfidfVectorizer(stop_words='english')
+				tf_idf_docs = self.vectorizer.fit_transform(docs)
+				with open("saved_params/tf_idf_vectorizer.pkl", 'wb') as f:
+					pickle.dump(self.vectorizer, f)
+				f.close()
+				with open("saved_params/tf_idf_docs.pkl", 'wb') as f:
+					pickle.dump(tf_idf_docs, f)
+				f.close()
 
 			self.svd = TruncatedSVD(n_components=self.lsa_components, random_state=42)
 			vecs = self.svd.fit_transform(tf_idf_docs)
@@ -58,26 +74,75 @@ class InformationRetrieval():
 			for i in range(len(docIDs)):
 				self.doc_vecs[docIDs[i]] = vecs[i] 
 
-		elif self.type == 'gvsm':
-			self.vectorizer = TfidfVectorizer(stop_words='english')
-			tf_idf_docs = self.vectorizer.fit_transform(docs)
-			vocab = list(self.vectorizer.vocabulary_.keys())
-			vocab.sort(key=lambda x: self.vectorizer.vocabulary_[x])
-			syns = get_synsets(vocab)
-			self.titj = create_titj(syns)
-
-			self.doc_vecs = {}
-			for i in range(len(docIDs)):
-				self.doc_vecs[docIDs[i]] = gvsm_dot(r_doc_vec(tf_idf_docs[i]), self.titj)
-
+		elif self.type == 'gvsm' or self.type == 'hybrid':
+			try:
+				with open("saved_params/tf_idf_vectorizer.pkl", 'rb') as f:
+					self.vectorizer = pickle.load(f)
+				f.close()
+				with open("saved_params/tf_idf_docs.pkl", 'rb') as f:
+					tf_idf_docs = pickle.load(f)
+				f.close()
 				
-		elif self.type == 'hybrid':
-			pass
+			except:
+				self.vectorizer = TfidfVectorizer(stop_words='english')
+				tf_idf_docs = self.vectorizer.fit_transform(docs)
+				with open("saved_params/tf_idf_vectorizer.pkl", 'wb') as f:
+					pickle.dump(self.vectorizer, f)
+				f.close()
+				with open("saved_params/tf_idf_docs.pkl", 'wb') as f:
+					pickle.dump(tf_idf_docs, f)
+				f.close()
+			
+			try:
+				with open("saved_params/titj.pkl", 'rb') as f:
+					self.titj = pickle.load(f)
+				f.close()
+			except:
+				vocab = list(self.vectorizer.vocabulary_.keys())
+				vocab.sort(key=lambda x: self.vectorizer.vocabulary_[x])
+				syns = get_synsets(vocab)
+				self.titj = create_titj(syns)
+				with open("saved_params/titj.pkl", 'wb') as f:
+					pickle.dump(self.titj, f)
+				f.close()
+
+			try:
+				with open("saved_params/gvsm_doc_vecs.pkl", 'rb') as f:
+					self.doc_vecs = pickle.load(f)
+				f.close()
+			except:
+				self.doc_vecs = {}
+				for i in range(len(docIDs)):
+					self.doc_vecs[docIDs[i]] = np.dot(r_doc_vec(tf_idf_docs[i]), self.titj)
+				with open("saved_params/gvsm_doc_vecs.pkl", 'wb') as f:
+					pickle.dump(self.doc_vecs, f)
+				f.close()
+
+		if self.type == 'hybrid':
+			try:
+				with open("saved_params/hybrid_svd.pkl", 'rb') as f:
+					self.svd = pickle.load(f)
+				f.close()
+				with open("saved_params/hybrid_doc_vecs.pkl", 'rb') as f:
+					self.doc_vecs = pickle.load(f)
+				f.close()
+			except:
+				doc_matrix = np.array([self.doc_vecs[docIDs[i]] for i in range(len(docIDs))])
+				self.svd = TruncatedSVD(n_components=7184, random_state=42)
+				vecs = self.svd.fit_transform(doc_matrix)
+				with open("saved_params/hybrid_svd.pkl", 'wb') as f:
+					pickle.dump(self.svd, f)
+				f.close()
+
+				self.doc_vecs = {}
+				for i in range(len(docIDs)):
+					self.doc_vecs[docIDs[i]] = vecs[i]
+				with open(f"saved_params/hybrid_doc_vecs.pkl", 'wb') as f:
+					pickle.dump(self.doc_vecs, f)
+				f.close()
 
 
-		
-
-
+	
 	def rank(self, queries):
 		"""
 		Rank the documents according to relevance for each query
@@ -146,7 +211,7 @@ class InformationRetrieval():
 			tf_idf_queries = self.vectorizer.transform(queries)
 
 			for query in tf_idf_queries:
-				q_vec = gvsm_dot(r_doc_vec(query), self.titj)
+				q_vec = np.dot(r_doc_vec(query), self.titj)
 				doc_rel = []
 				for d in self.doc_vecs.keys():
 					d_vec = self.doc_vecs[d]
@@ -156,6 +221,9 @@ class InformationRetrieval():
 				doc_rel.sort(key=lambda x: x[1], reverse=True)
 				ordered = [d[0] for d in doc_rel]
 				doc_IDs_ordered.append(ordered)
+
+		elif self.type == 'hybrid':
+			pass
 
 		return doc_IDs_ordered
 
